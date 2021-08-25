@@ -4,14 +4,59 @@
 
 #define F_MIN(A,B) ( (A < B) ? A : B )
 
+namespace util{
+    template<class T>
+    class dynamic_array{
+        T *m_array;
+        int m_size;
+    public:
+        dynamic_array(){
+            
+        }
+    };
+
+
+    /** struct for reserving dimensional size data for multi-dimensional arrays*/
+    struct MultiDimSizing{
+        MultiDimSizing(int p_nDimension, int p_sizes...){
+            int auxarray[p_nDimension] = {p_sizes};
+            m_sizes = auxarray;
+            m_nDimension = p_nDimension;
+        }
+        ~MultiDimSizing(){
+            if(m_sizes != 0)
+                delete[] m_sizes;
+            m_sizes = 0;
+        }
+        int& operator[](int p_index){
+            return m_sizes[p_index];
+        }
+        int& GetDimension(){
+            return &m_nDimension;
+        }
+        void SetSize(int p_dest, int p_new_size){
+            m_sizes[p_dest] = p_new_size;
+        }
+    private:
+        int m_nDimension;
+        int *m_sizes;    
+    };
+
+    void copy_array(int *p_arr1, int *p_arr2, int p_count){
+        for(int i = 0; i < p_count; i++){
+            p_arr1[i] = p_arr2[i];
+        }
+    }
+};
+
 /**
  * Array<class> template for arrays of n dimensions.
  */
 template<class dataType>
 class Array{
     dataType *m_array;
-    int *m_sizes,
-         m_dimensionN;
+    util::MultiDimSizing m_sizes;
+
     int  m_getGridCount(const int n, int *p_sizes) const{
         if(n < 0) return 1;
         return p_sizes[n] * m_getGridCount(n-1, p_sizes);
@@ -70,21 +115,15 @@ public:
         //New data array;
         dataType *newarray = 0;
         //Save new sizes
-        int newsizes[] = {p_sizes};
+        int newsizes[] = {p_sizes...};
         //Allocate new array
         newarray = new dataType[ m_getGridCount( m_dimensionN - 1, newsizes) ];
         if(newarray == 0) return;                                     //Catch Allocation error
 
-        int *min = m_getMinArray( oldsizes, newsizes);
+        int *min = m_getMinArray( m_sizes, newsizes);
 
-        int min = (p_size < m_size) ? p_size : m_size,  //number of bytes to copy
-            index;                                      //array index
-        for(index = 0; index < min; index++)
-            newarray[index] = m_array[index];           //copy data
-        if(m_array != 0)                                //delete old array (if exists)
-            delete[] m_array;
-        m_array = newarray;                             //use new array
-        m_size = p_size;
+        //TODO: copy old array dato to the new
+
     }
 };
 #endif //MY_ARRAYS_H
