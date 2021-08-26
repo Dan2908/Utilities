@@ -4,17 +4,90 @@
 
 #define F_MIN(A,B) ( (A < B) ? A : B )
 
+
 namespace util{
+    const unsigned C_BIG_ARRAY = 512; /* Minimum size of data in bytes to consider an array a big array */
+
+    /** Copies [p_count] data from [p_orig] to [p_dest] using Duff's Device.*/
+    void duff_copy(int *p_orig, int *p_dest, int p_count){
+        int n = (p_count + 7) / 8;
+ 
+        switch (p_count % 8)
+        {
+        case 0: do { *p_dest++ = *p_orig++;
+        case 7:      *p_dest++ = *p_orig++;
+        case 6:      *p_dest++ = *p_orig++;
+        case 5:      *p_dest++ = *p_orig++;
+        case 4:      *p_dest++ = *p_orig++;
+        case 3:      *p_dest++ = *p_orig++;
+        case 2:      *p_dest++ = *p_orig++;
+        case 1:      *p_dest++ = *p_orig++;
+                    } while (--n);
+        }
+    }
+    /** Copies [p_count] data from [p_orig] to [p_dest].*/
+    void copy_array(int *p_orig, int *p_dest, int p_count){
+        for(int i = 0; i < p_count; i++){
+            p_dest[i] = p_orig[i];
+        }
+    }
+
     template<class T>
     class dynamic_array{
         T *m_array;
         int m_size;
     public:
-        dynamic_array(){
-            
+        dynamic_array(int p_size) : m_size(p_size), m_array(new T[p_size]) {}
+        ~dynamic_array(){
+            if(m_array != 0) delete[] m_array;
+            m_array = 0;
+        }
+        /*  Adds cells to the array. If [p_end] is true, cells are added at the end of the array,
+           or at the beginning otherwise.*/
+        void add_cells(int p_count, bool p_end){
+            //  Create new empty array of new size //
+            T *newarray = new T[m_size + p_count];
+            //  Check allocating error  //
+            if(newarray == 0) return;
+            //  Copy old data   //
+            int offset = (p_end) ? 0 : p_count; 
+            duff_copy(m_array, &newarray[offset], m_size);
+            //  Delete old array
+            delete[] m_array;
+            //  Save new values  //
+            m_size += p_count;
+            m_array = newarray;
+        }
+        /*  Removes cells from the array. If [p_end] is true, end cells are removed. Otherwise 
+            first cells are removed. */
+        void rem_cells(int p_count, bool p_end){
+            //  Check if p_count exeeds array size  //
+            if(p_count > m_size) return;
+            //  Delete cells    //
+            if(p_end){
+                delete[] (&m_array[m_size - p_count], p_count);
+            }else{
+                delete[] (m_array, p_count);
+                m_array = &m_array[p_count];
+            }
+            //  Update size     //
+                m_size -= p_count;
+        }
+        /* Returns areference to the value in the array at p_index */
+        T& get( int p_index ){
+            return m_array[p_index];
+        }
+        /* Returns array size */
+        int size(){
+            return m_size;
+        }
+        /* Set all array values to [p_value]. Fills with zero if not specified*/
+        void set( int p_value = 0){
+
         }
     };
-
+};
+#else
 
     /** struct for reserving dimensional size data for multi-dimensional arrays*/
     struct MultiDimSizing{
@@ -32,7 +105,7 @@ namespace util{
             return m_sizes[p_index];
         }
         int& GetDimension(){
-            return &m_nDimension;
+            return m_nDimension;
         }
         void SetSize(int p_dest, int p_new_size){
             m_sizes[p_dest] = p_new_size;
@@ -41,12 +114,7 @@ namespace util{
         int m_nDimension;
         int *m_sizes;    
     };
-
-    void copy_array(int *p_arr1, int *p_arr2, int p_count){
-        for(int i = 0; i < p_count; i++){
-            p_arr1[i] = p_arr2[i];
-        }
-    }
+    
 };
 
 /**
