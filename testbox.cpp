@@ -1,36 +1,47 @@
 #include <stdio.h>
+#include <cstdlib>
+#include <chrono>
+#include "utilities.h"
 
-#include "my_arrays.h"
-
-int main(){
-
-    int ARRAY_SIZE = 8;
-
-    util::dynamic_array<int> arr( ARRAY_SIZE );
-
-    for(int i = 0; i < arr.size(); i++){
-        arr.get(i) = i * i;
+template < class dataType >
+  void printArray(util::dynamic_array < dataType > * p_array) {
+    printf("PRINT VALUES, SIZE: %i\n|", p_array -> size());
+    for (int i = 0; i < p_array -> size(); i++) {
+      printf("%i\t|", p_array -> get(i));
     }
+    printf("\n\n");
+  }
 
-    printf("PRINT VALUES, SIZE: %i\n", arr.size());
-    for(int i = 0; i < arr.size(); i++){
-        printf("%i\t|", arr.get(i));
-    }
+typedef util::dynamic_array < int > intArray;
 
-    printf("\n\nADD 2 ITEMS TO THE END...\n");
-    arr.add_cells(2, true);
+template<class T, class... Pp >
+void test_function(T( * F)(Pp...), Pp... p_args) {
+  auto start = std::chrono::high_resolution_clock::now();
+  F(p_args...);
+  auto end = std::chrono::high_resolution_clock::now();
+  printf("it took %i ticks, or %f seconds.\n", start - end, (float)end / CLOCKS_PER_SEC);
+}
 
-    printf("PRINT VALUES, SIZE: %i\n", arr.size());
-    for(int i = 0; i < arr.size(); i++){
-        printf("%i\t|", arr.get(i));
-    }
+int main() {
+  int arraySize = 3000;
 
-    printf("\n\nDELETE FIRST 2 ITEMS...\n");
-    arr.rem_cells(2, false);
+  intArray from(arraySize);
+  intArray to(arraySize);
 
-    printf("PRINT VALUES, SIZE: %i\n", arr.size());
-    for(int i = 0; i < arr.size(); i++){
-        printf("%i\t|", arr.get(i));
-    }
-    return 0;
+  for (int i = 0; i < arraySize; i++) {
+    from.get(i) = (i * 2) + 1;
+    to.get(i) = (i * 2);
+  }
+  
+  printf("%li \n", CLOCKS_PER_SEC);
+
+
+  auto start = std::chrono::high_resolution_clock::now();
+  util::duff_copy(&from.get(0), &to.get(0), arraySize);
+  auto end = std::chrono::high_resolution_clock::now();
+  printf("it took %i ticks, or %f seconds.\n", end - start, 0);
+
+
+  //printArray( & to);
+  return 0;
 }

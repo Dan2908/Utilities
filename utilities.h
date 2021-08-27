@@ -1,36 +1,17 @@
 #ifndef MY_ARRAYS_H
 #define MY_ARRAYS_H
 #include <cstdarg>
+#include <stdio.h>
 
 #define F_MIN(A,B) ( (A < B) ? A : B )
-
 
 namespace util{
     const unsigned C_BIG_ARRAY = 512; /* Minimum size of data in bytes to consider an array a big array */
 
     /** Copies [p_count] data from [p_orig] to [p_dest] using Duff's Device.*/
-    void duff_copy(int *p_orig, int *p_dest, int p_count){
-        int n = (p_count + 7) / 8;
- 
-        switch (p_count % 8)
-        {
-        case 0: do { *p_dest++ = *p_orig++;
-        case 7:      *p_dest++ = *p_orig++;
-        case 6:      *p_dest++ = *p_orig++;
-        case 5:      *p_dest++ = *p_orig++;
-        case 4:      *p_dest++ = *p_orig++;
-        case 3:      *p_dest++ = *p_orig++;
-        case 2:      *p_dest++ = *p_orig++;
-        case 1:      *p_dest++ = *p_orig++;
-                    } while (--n);
-        }
-    }
+    void duff_copy(int *p_orig, int *p_dest, int p_count);
     /** Copies [p_count] data from [p_orig] to [p_dest].*/
-    void copy_array(int *p_orig, int *p_dest, int p_count){
-        for(int i = 0; i < p_count; i++){
-            p_dest[i] = p_orig[i];
-        }
-    }
+    void copy_array(int *p_orig, int *p_dest, int p_count);
 
     template<class T>
     class dynamic_array{
@@ -64,14 +45,16 @@ namespace util{
             //  Check if p_count exeeds array size  //
             if(p_count > m_size) return;
             //  Delete cells    //
-            if(p_end){
-                delete[] (&m_array[m_size - p_count], p_count);
-            }else{
-                delete[] (m_array, p_count);
-                m_array = &m_array[p_count];
-            }
+            T *toRemove = (p_end) ? &m_array[m_size - p_count] : m_array;
+            m_array = (!p_end) ? &m_array[p_count - 1] : m_array;
+            
+            printf("ptr value -> %i\n", toRemove);
+            realloc(toRemove, sizeof(T) * p_count);
+            printf("ptr value -> %i\n", toRemove);
+
+            free(toRemove);
             //  Update size     //
-                m_size -= p_count;
+            m_size -= p_count;
         }
         /* Returns areference to the value in the array at p_index */
         T& get( int p_index ){
