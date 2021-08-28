@@ -1,41 +1,110 @@
-#ifndef MY_ARRAYS_H
-#define MY_ARRAYS_H
-#include <cstdarg>
-
+#ifndef UTILITIES_H
+// DEFINITIONS
+#define UTILITIES_H
+// MACROS
 #define F_MIN(A, B) ((A < B) ? A : B)
+// INCLUDES
+#include <crtdefs.h>    // size_t
+#include <chrono>       // clocks, time_point
 
 namespace util
 {
-    const unsigned C_BIG_ARRAY = 512; /* Minimum size of data in bytes to consider an array a big array */
+/* Minimum size of data in bytes to consider an array a big array */
+    const unsigned C_BIG_ARRAY = 512; 
+/** Copies [p_count] data from array [p_orig] to the array [p_dest] using Duff's Device.
+ *  If [p_value] is passed instead of [p_orig], it fills [p_count] elements with that value.  
+ *      @param [p_orig] Pointer to the array to be copied.
+ *      @param [p_dest] Pointer to the destination array.
+ *      @param [p_count] Number of elements to be copied.
+ *      @return Nothing. */
+    template<class T>
+    void duff_device(T *p_orig, T *p_dest, size_t p_count){
+        int n = (p_count + 7) / 8;
+ 
+        switch (p_count % 8)
+        {
+        case 0: do { *p_dest++ = *p_orig++;
+        case 7:      *p_dest++ = *p_orig++;
+        case 6:      *p_dest++ = *p_orig++;
+        case 5:      *p_dest++ = *p_orig++;
+        case 4:      *p_dest++ = *p_orig++;
+        case 3:      *p_dest++ = *p_orig++;
+        case 2:      *p_dest++ = *p_orig++;
+        case 1:      *p_dest++ = *p_orig++;
+                    } while (--n);
+        }
+    }
+    template<class T>
+    void duff_device(const T p_value, T *p_dest, size_t p_count){
+        int n = (p_count + 7) / 8;
+ 
+        switch (p_count % 8)
+        {
+        case 0: do { *p_dest++ = p_value;
+        case 7:      *p_dest++ = p_value;
+        case 6:      *p_dest++ = p_value;
+        case 5:      *p_dest++ = p_value;
+        case 4:      *p_dest++ = p_value;
+        case 3:      *p_dest++ = p_value;
+        case 2:      *p_dest++ = p_value;
+        case 1:      *p_dest++ = p_value;
+                    } while (--n);
+        }
+    }
+/** Copies [p_count] data from [p_orig] to [p_dest] using a for loop.
+ *  If [p_value] is passed instead of [p_orig], it fills [p_count] elements with that value. 
+ *      @param [p_orig] Pointer to the array to be copied.
+ *      @param [p_dest] Pointer to the destination array.
+ *      @param [p_count] Number of elements to be copied.
+ *      @return Nothing. */
+    template<class T>
+    void copy_array(T *p_orig, T *p_dest, size_t p_count){
+        for(int i = 0; i < p_count; i++){
+            p_dest[i] = p_orig[i];
+        }
+    }
+    template<class T>
+    void copy_array(const T p_value, T *p_dest, size_t p_count){
+        for(int i = 0; i < p_count; i++){
+            p_dest[i] = p_value;
+        }
+    }
 
-    /** Copies [p_count] data from [p_orig] to [p_dest] using Duff's Device.*/
-    void duff_copy(int *p_orig, int *p_dest, int p_count);
-    /** Copies [p_count] data from [p_orig] to [p_dest] using for loop.*/
-    void copy_array(int *p_orig, int *p_dest, int p_count);
-    /** Measures the execution time of function [p_function] in nanoseconds.
-    * This functions implements std::chrono libraries to do the task.*/
+/** TODO: Fix this functions to take function templates. //////// 
+ *  Registers the execution time of a given function [p_function].
+ *  This functions implements std::chrono libraries to do the task.
+ *  @warning Values returned by this function may vary depending on SO specific and priority of CPU usage,
+ *  but may be still useful to compare algorithms each other.
+ *      @param [p_function] Pointer to a function to be registered.
+ *      @param [p_args] Comma-separated parameters that shall be passed to the [p_function], ordered.
+ *      @return Execution time in nanoseconds.*/
     template <class T, class... Ts>
     int function_duration(T (*p_function)(Ts...), Ts... p_args)
-    {
-        using namespace std::chrono;
-        steady_clock::time_point begin, end;
-        begin = steady_clock::now();
-        p_function(p_args...);
-        end = steady_clock::now();
+    {   // Note: avoided the 'using namespace' keywords to avoid bugs-> @see https://docs.microsoft.com/en-us/cpp/cpp/namespaces-cpp?view=msvc-160
+        std::chrono::_V2::steady_clock::time_point  begin, 
+                                                    end;
+        begin = std::chrono::_V2::steady_clock::now();
+        p_function(p_args...);      // <- Function executes here.
+        end = std::chrono::_V2::steady_clock::now();
 
-        return duration_cast<nanoseconds>(end - begin).count();
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
     }
     
-    /** Compares the first [p_size] elements of two arrays.
-     * @return  true if contents in both arrays are equal, false otherwise.*/
+/** Compares the first [p_size] elements of two arrays. 
+ *      @param [p_leftArray] Pointer an array to be compared.
+ *      @param [p_rightArray] Pointer to an array to compare [p_leftArray] to.
+ *      @param [p_size] Array size (not in bytes, but in T array elements). This function doesn't
+ *      check any array size.
+ *      @return true if contents in both arrays are equal, false otherwise.*/
     template <class T>
-    bool compare_arrays(T *p_leftArray, T *p_rightArray, size_t p_size)
+    bool compare_arrays(T *p_leftArray, T *p_rightArray, const size_t p_size)
     {
         for (int i = 0; i < p_size; i++)
             if (p_leftArray[i] != p_rightArray[i]) return false;
         return true;
     }
-
+/**
+ * A class for a basic dynamic array handling with it's basic methods. */
     template <class T>
     class dynamic_array
     {
@@ -49,7 +118,10 @@ namespace util
                 delete[] m_array;
             m_array = 0;
         }
-        bool operator==(dynamic_array<T>& p_other)  { return compare_arrays(m_array, p_other, m_size); }
+        bool operator==(dynamic_array<T>& p_other)  { 
+            return     ( m_size == p_other.m_size )
+                    && ( compare_arrays(m_array, p_other, m_size) );
+            }
 
         /*  Adds cells to the array. If [p_end] is true, cells are added at the end of the array,
            or at the beginning otherwise.*/
@@ -106,7 +178,10 @@ namespace util
         }
     };
 };
+
 #else
+
+// TODO: These functions bellow may be derived from dinamic_array (above).
 
 /** struct for reserving dimensional size data for multi-dimensional arrays*/
 struct MultiDimSizing
@@ -233,4 +308,4 @@ public:
         //TODO: copy old array dato to the new
     }
 };
-#endif //MY_ARRAYS_H
+#endif //UTILITIES_H

@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <cstdlib>
-#include <chrono>
 #include "utilities.h"
 
 template <class dataType>
@@ -18,8 +16,25 @@ typedef util::dynamic_array<int> intArray;
 
 int main()
 {
-    int arraySize = 40000;
+    size_t arraySize = 40;
+    intArray A(arraySize), B(arraySize);
+    int *a = (int*)A;
+    int *b = (int*)B;
 
+    printArray(&A);
+    printArray(&B);
+    
+    int time = util::function_duration( util::duff_device, 1, a, arraySize);
+    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
+    
+    time = util::function_duration( util::duff_device, 2, b, arraySize);
+    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
 
+    printArray(&A);
+    printArray(&B);
+    
+    time = util::function_duration( util::duff_device, a, b, arraySize);
+    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
+    
     return 0;
 }
