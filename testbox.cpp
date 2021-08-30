@@ -16,25 +16,17 @@ typedef util::dynamic_array<int> intArray;
 
 int main()
 {
-    size_t arraySize = 40;
-    intArray A(arraySize), B(arraySize);
-    int *a = (int*)A;
-    int *b = (int*)B;
+    size_t arraySize = 400;
+    intArray A(arraySize);
+    
+    util::testing::timer t;
+    
+    t.start();
+    intArray B(A); //cpy constructor
+    t.end();
 
-    printArray(&A);
-    printArray(&B);
-    
-    int time = util::function_duration( util::duff_device, 1, a, arraySize);
-    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
-    
-    time = util::function_duration( util::duff_device, 2, b, arraySize);
-    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
+    printf("Copying %i elements from array took %i[ns]\n", arraySize, t.get_nanoseconds());
 
-    printArray(&A);
-    printArray(&B);
-    
-    time = util::function_duration( util::duff_device, a, b, arraySize);
-    printf("Array size: %i\nelapsed time: %ins\n", arraySize ,time );
-    
+    printf("\n Arrays are %s", (A == B) ? "equal." : "not equal.");
     return 0;
 }

@@ -9,8 +9,29 @@
 
 namespace util
 {
-/* Minimum size of data in bytes to consider an array a big array */
-    const unsigned C_BIG_ARRAY = 512; 
+    namespace testing{
+    /** 
+     *  Timer implementation for measuring execution times.
+     *  This functions implements std::chrono libraries to do the task.
+     *  
+     *  Values returned by it's methods may vary depending on SO specific and priority of CPU usage,
+     *  but may be still useful to compare algorithms each other. */
+        class timer{
+            std::chrono::time_point<std::chrono::_V2::steady_clock> m_begin, m_end;
+            std::chrono::nanoseconds m_duration;
+        public:
+            timer() : m_duration(std::chrono::nanoseconds::zero()) {}
+            void start(){
+                m_begin = std::chrono::_V2::steady_clock::now();
+                m_duration = std::chrono::nanoseconds::zero();
+            }
+            void end(){
+                m_end = std::chrono::_V2::steady_clock::now();
+                m_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(m_end - m_begin);
+            }
+            int get_nanoseconds() { return m_duration.count(); }
+        };
+    };
 /** Copies [p_count] data from array [p_orig] to the array [p_dest] using Duff's Device.
  *  If [p_value] is passed instead of [p_orig], it fills [p_count] elements with that value.  
  *      @param [p_orig] Pointer to the array to be copied.
@@ -70,26 +91,6 @@ namespace util
         }
     }
 
-/** TODO: Fix this functions to take function templates. //////// 
- *  Registers the execution time of a given function [p_function].
- *  This functions implements std::chrono libraries to do the task.
- *  @warning Values returned by this function may vary depending on SO specific and priority of CPU usage,
- *  but may be still useful to compare algorithms each other.
- *      @param [p_function] Pointer to a function to be registered.
- *      @param [p_args] Comma-separated parameters that shall be passed to the [p_function], ordered.
- *      @return Execution time in nanoseconds.*/
-    template <class T, class... Ts>
-    int function_duration(T (*p_function)(Ts...), Ts... p_args)
-    {   // Note: avoided the 'using namespace' keywords to avoid bugs-> @see https://docs.microsoft.com/en-us/cpp/cpp/namespaces-cpp?view=msvc-160
-        std::chrono::_V2::steady_clock::time_point  begin, 
-                                                    end;
-        begin = std::chrono::_V2::steady_clock::now();
-        p_function(p_args...);      // <- Function executes here.
-        end = std::chrono::_V2::steady_clock::now();
-
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
-    }
-    
 /** Compares the first [p_size] elements of two arrays. 
  *      @param [p_leftArray] Pointer an array to be compared.
  *      @param [p_rightArray] Pointer to an array to compare [p_leftArray] to.
@@ -111,18 +112,41 @@ namespace util
         T *m_array;
         int m_size;
     public:
+    /** Constructor. */
         dynamic_array(int p_size) : m_size(p_size), m_array(new T[p_size]) {}
+    /** Copy constructor. */
+        dynamic_array( dynamic_array<T>& p_other) : dynamic_array<T>( p_other.m_size ) 
+        { 
+            copy(p_other);
+        }
+    /** Destructor. */
         ~dynamic_array()
         {
             if (m_array != 0)
                 delete[] m_array;
             m_array = 0;
         }
+    /** Comparation operator */
         bool operator==(dynamic_array<T>& p_other)  { 
             return     ( m_size == p_other.m_size )
-                    && ( compare_arrays(m_array, p_other, m_size) );
-            }
-
+                    && ( compare_arrays(p_other.m_array, m_array, m_size));
+        }
+    /** Index operator, returns a reference of data array */    
+        T &operator[](int p_index) { return m_array[p_index]; }
+    /** Returns array size */
+        int size()
+        {
+            return m_size;
+        }
+    /** @brief Copy data from other array.
+     *  If destination array size is less than the elements to be copied, it only copies
+     *  all the elements that fits. Array is not resized. */
+        void copy( dynamic_array<T>& p_other ){
+            int minSize = p_other.size();
+            if(m_size < minSize)
+                minSize = m_size;
+            duff_device( p_other.m_array, m_array, minSize); 
+        }
         /*  Adds cells to the array. If [p_end] is true, cells are added at the end of the array,
            or at the beginning otherwise.*/
         void add_cells(int p_count, bool p_end)
@@ -160,22 +184,7 @@ namespace util
             //  Update size     //
             m_size -= p_count;
         }
-        /* Returns areference to the value in the array at p_index */
-        T &get(int p_index)
-        {
-            return m_array[p_index];
-        }
-        /* Returns array size */
-        int size()
-        {
-            return m_size;
-        }
-        T &operator[](int p_index) { return m_array[p_index]; }
-        (*operator T()) { return m_array; }
-        /* Set all array values to [p_value]. Fills with zero if not specified*/
-        void set(int p_value = 0)
-        {
-        }
+
     };
 };
 
