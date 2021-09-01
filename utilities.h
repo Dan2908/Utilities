@@ -4,187 +4,125 @@
 // MACROS
 #define F_MIN(A, B) ((A < B) ? A : B)
 // INCLUDES
-#include <crtdefs.h>    // size_t
-#include <chrono>       // clocks, time_point
+#include <crtdefs.h> // size_t
+#include <algorithm> // std::copy
+#include <chrono>    // clocks, time_point
 
 namespace util
 {
-    namespace testing{
-    /** 
-     *  Timer implementation for measuring execution times.
-     *  This functions implements std::chrono libraries to do the task.
-     *  
-     *  Values returned by it's methods may vary depending on SO specific and priority of CPU usage,
-     *  but may be still useful to compare algorithms each other. */
-        class timer{
-            std::chrono::time_point<std::chrono::_V2::steady_clock> m_begin, m_end;
-            std::chrono::nanoseconds m_duration;
-        public:
-            timer() : m_duration(std::chrono::nanoseconds::zero()) {}
-            void start(){
-                m_begin = std::chrono::_V2::steady_clock::now();
-                m_duration = std::chrono::nanoseconds::zero();
-            }
-            void end(){
-                m_end = std::chrono::_V2::steady_clock::now();
-                m_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(m_end - m_begin);
-            }
-            int get_nanoseconds() { return m_duration.count(); }
-        };
-    };
-/** Copies [p_count] data from array [p_orig] to the array [p_dest] using Duff's Device.
- *  If [p_value] is passed instead of [p_orig], it fills [p_count] elements with that value.  
- *      @param [p_orig] Pointer to the array to be copied.
- *      @param [p_dest] Pointer to the destination array.
- *      @param [p_count] Number of elements to be copied.
- *      @return Nothing. */
-    template<class T>
-    void duff_device(T *p_orig, T *p_dest, size_t p_count){
-        int n = (p_count + 7) / 8;
- 
-        switch (p_count % 8)
-        {
-        case 0: do { *p_dest++ = *p_orig++;
-        case 7:      *p_dest++ = *p_orig++;
-        case 6:      *p_dest++ = *p_orig++;
-        case 5:      *p_dest++ = *p_orig++;
-        case 4:      *p_dest++ = *p_orig++;
-        case 3:      *p_dest++ = *p_orig++;
-        case 2:      *p_dest++ = *p_orig++;
-        case 1:      *p_dest++ = *p_orig++;
-                    } while (--n);
-        }
-    }
-    template<class T>
-    void duff_device(const T p_value, T *p_dest, size_t p_count){
-        int n = (p_count + 7) / 8;
- 
-        switch (p_count % 8)
-        {
-        case 0: do { *p_dest++ = p_value;
-        case 7:      *p_dest++ = p_value;
-        case 6:      *p_dest++ = p_value;
-        case 5:      *p_dest++ = p_value;
-        case 4:      *p_dest++ = p_value;
-        case 3:      *p_dest++ = p_value;
-        case 2:      *p_dest++ = p_value;
-        case 1:      *p_dest++ = p_value;
-                    } while (--n);
-        }
-    }
-/** Copies [p_count] data from [p_orig] to [p_dest] using a for loop.
- *  If [p_value] is passed instead of [p_orig], it fills [p_count] elements with that value. 
- *      @param [p_orig] Pointer to the array to be copied.
- *      @param [p_dest] Pointer to the destination array.
- *      @param [p_count] Number of elements to be copied.
- *      @return Nothing. */
-    template<class T>
-    void copy_array(T *p_orig, T *p_dest, size_t p_count){
-        for(int i = 0; i < p_count; i++){
-            p_dest[i] = p_orig[i];
-        }
-    }
-    template<class T>
-    void copy_array(const T p_value, T *p_dest, size_t p_count){
-        for(int i = 0; i < p_count; i++){
-            p_dest[i] = p_value;
-        }
-    }
-
-/** Compares the first [p_size] elements of two arrays. 
- *      @param [p_leftArray] Pointer an array to be compared.
- *      @param [p_rightArray] Pointer to an array to compare [p_leftArray] to.
- *      @param [p_size] Array size (not in bytes, but in T array elements). This function doesn't
- *      check any array size.
- *      @return true if contents in both arrays are equal, false otherwise.*/
-    template <class T>
-    bool compare_arrays(T *p_leftArray, T *p_rightArray, const size_t p_size)
-    {
-        for (int i = 0; i < p_size; i++)
-            if (p_leftArray[i] != p_rightArray[i]) return false;
-        return true;
-    }
-/**
- * A class for a basic dynamic array handling with it's basic methods. */
+/** A class for a basic dynamic array handling with it's basic methods. */
     template <class T>
     class dynamic_array
     {
         T *m_array;
-        int m_size;
+        size_t m_size;
+
     public:
-    /** Constructor. */
-        dynamic_array(int p_size) : m_size(p_size), m_array(new T[p_size]) {}
-    /** Copy constructor. */
-        dynamic_array( dynamic_array<T>& p_other) : dynamic_array<T>( p_other.m_size ) 
-        { 
-            copy(p_other);
-        }
-    /** Destructor. */
+        /** Constructor. */
+        dynamic_array() 
+            : m_size(0), m_array(0) {}
+        dynamic_array(size_t p_size) 
+            : m_size(p_size), m_array(new T[p_size])    {}
+        /** Copy constructor. */
+        dynamic_array(dynamic_array<T> &p_other) 
+            : dynamic_array<T>() {  *this = p_other; }  // operator=
+        /** Destructor. */
         ~dynamic_array()
         {
             if (m_array != 0)
                 delete[] m_array;
             m_array = 0;
         }
-    /** Comparation operator */
-        bool operator==(dynamic_array<T>& p_other)  { 
-            return     ( m_size == p_other.m_size )
-                    && ( compare_arrays(p_other.m_array, m_array, m_size));
+        /** Comparation operator */
+        bool operator==(dynamic_array<T> &p_other)
+        {
+            if (m_size == p_other.m_size)
+            {
+                return std::equal(m_array, &m_array[m_size - 1], &p_other[0]);
+            }
+            return false;
         }
-    /** Index operator, returns a reference of data array */    
-        T &operator[](int p_index) { return m_array[p_index]; }
-    /** Returns array size */
-        int size()
+        /** Asignation */
+        void operator=(dynamic_array<T> &p_other)
+        {
+            // New array
+            size_t newSize = p_other.size();
+            T *newArray = new T[newSize];
+            // Check new array
+            if (newArray == 0)  return;
+            // Delete old array.
+            if (m_array != 0)   delete[] m_array; 
+            // Save pointer and new size.
+            m_size = newSize;
+            m_array = newArray;
+            // Copy new data
+            copy(p_other);
+        }
+        /** Index operator, returns a reference of data array */
+        T &operator[](size_t p_index)
+        {
+            return m_array[p_index];
+        }
+        /** Returns array size */
+        size_t size()
         {
             return m_size;
         }
-    /** @brief Copy data from other array.
+        /** Resize */
+        void resize(size_t p_size)
+        {
+            // Create new array.
+            T *newArray = new T(p_size);
+            if (newArray == 0) //
+                return;        // Check errors.
+            // Copy old data.
+            if(m_size > 0){
+                size_t min = (p_size < m_size) ? p_size : m_size;
+                std::copy(m_array, &m_array[min], newArray);
+                // Delete old array.
+                delete[] m_array;
+            }
+            // Save data.
+            m_array = newArray;
+            m_size = p_size;
+        }
+        /** @brief Copy data from other array.
      *  If destination array size is less than the elements to be copied, it only copies
      *  all the elements that fits. Array is not resized. */
-        void copy( dynamic_array<T>& p_other ){
-            int minSize = p_other.size();
-            if(m_size < minSize)
-                minSize = m_size;
-            duff_device( p_other.m_array, m_array, minSize); 
-        }
-        /*  Adds cells to the array. If [p_end] is true, cells are added at the end of the array,
-           or at the beginning otherwise.*/
-        void add_cells(int p_count, bool p_end)
+        void copy(dynamic_array<T> &p_other)
         {
-            //  Create new empty array of new size //
-            T *newarray = new T[m_size + p_count];
-            //  Check allocating error  //
-            if (newarray == 0)
-                return;
-            //  Copy old data   //
-            int offset = (p_end) ? 0 : p_count;
-            duff_copy(m_array, &newarray[offset], m_size);
-            //  Delete old array
-            delete[] m_array;
-            //  Save new values  //
-            m_size += p_count;
-            m_array = newarray;
+            size_t lastPos = (m_size < p_other.m_size) ? m_size : p_other.m_size;
+            std::copy(p_other.m_array, &p_other[lastPos], m_array);
         }
-        /*  Removes cells from the array. If [p_end] is true, end cells are removed. Otherwise 
-            first cells are removed. */
-        void rem_cells(int p_count, bool p_end)
+    };
+
+    namespace testing
+    {
+        /** 
+     *  Timer implementation for measuring execution times.
+     *  This functions implements std::chrono libraries to do the task.
+     *  
+     *  Values returned by it's methods may vary depending on SO specific and priority of CPU usage,
+     *  but may be still useful to compare algorithms each other. */
+        class timer
         {
-            //  Check if p_count exeeds array size  //
-            if (p_count > m_size)
-                return;
-            //  Delete cells    //
-            T *toRemove = (p_end) ? &m_array[m_size - p_count] : m_array;
-            m_array = (!p_end) ? &m_array[p_count - 1] : m_array;
+            std::chrono::time_point<std::chrono::_V2::steady_clock> m_begin, m_end;
+            std::chrono::nanoseconds m_duration;
 
-            printf("ptr value -> %i\n", toRemove);
-            realloc(toRemove, sizeof(T) * p_count);
-            printf("ptr value -> %i\n", toRemove);
-
-            free(toRemove);
-            //  Update size     //
-            m_size -= p_count;
-        }
-
+        public:
+            timer() : m_duration(std::chrono::nanoseconds::zero()) {}
+            void start()
+            {
+                m_begin = std::chrono::_V2::steady_clock::now();
+                m_duration = std::chrono::nanoseconds::zero();      // reset duration
+            }
+            void end()
+            {
+                m_end = std::chrono::_V2::steady_clock::now();
+                m_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(m_end - m_begin);
+            }
+            int get_nanoseconds() { return m_duration.count(); }
+        };
     };
 };
 
